@@ -62,8 +62,12 @@ while true
     params = {}
     print "First Name: (#{body['first_name']}) "
     params["first_name"] = gets.chomp
+    print "Middle Name: (#{body['middle_name']}) "
+    params["middle_name"] = gets.chomp
     print "Last Name: (#{body['last_name']}) "
     params["last_name"] = gets.chomp
+    print "Bio: (#{body['bio']}) "
+    params["bio"] = gets.chomp
     print "Email: (#{body['email']}) "
     params["email"] = gets.chomp
     print "Phone Number: (#{body['phone_number']}) "
@@ -78,8 +82,12 @@ while true
     params = {}
     print "First Name: "
     params["first_name"] = gets.chomp
+    print "Middle Name: "
+    params["middle_name"] = gets.chomp
     print "Last Name: "
     params["last_name"] = gets.chomp
+    print "Bio: "
+    params["bio"] = gets.chomp
     print "Email: "
     params["email"] = gets.chomp
     print "Phone Number: "
