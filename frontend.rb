@@ -1,39 +1,100 @@
 require "unirest"
-system "clear"
-puts "Welcome to the Contacts App!"
-puts
+require "tty-prompt"
 
 while true
+  system "clear"
+  puts "Welcome to the Contacts App!"
+  puts
+  puts "[Enter] To Signup"
+  puts "[Login] To Login"
+  puts "[In?] To check login status"
   puts "[1] View First Contact"
   puts "[2] View All Contacts"
   puts "[3] View All Contacts, Limited Info"
   puts "[4] View Specific Contact"
-  puts "[5] Update a Contact"
-  puts "[6] Create a Contact"
-  puts "[7] Delete a Contact"
+  puts "[5] Search All Contacts"
+  puts "[6] Update a Contact"
+  puts "[7] Create a Contact"
+  puts "[8] Delete a Contact"
+  puts "[Logout] to Logout"
   puts "To quit, type 'q'"
   input = gets.chomp
   puts
-  if input == "1" # View First Contact
+
+  if input == ""
+    prompt = TTY::Prompt.new
+    params = {}
+    print "Enter name: "
+    params[:name] = gets.chomp
+    print "Enter email: "
+    params[:email] = gets.chomp
+    params[:password] = prompt.mask "Enter password: "
+    params[:password_confirmation] =  prompt.mask "Enter password again: "
+    response = Unirest.post("http://localhost:3000/v2/users", parameters: params)
+    body = response.body
+    puts JSON.pretty_generate(body)
+    puts
+    print "[Enter] to continue: "
+    gets.chomp
+  elsif input == "Login" or input == "login"
+    prompt = TTY::Prompt.new
+    print "Enter email: "
+    email = gets.chomp
+    password = prompt.mask "Enter password: "
+    response = Unirest.post(
+      "http://localhost:3000/user_token",
+      parameters: {
+        auth: {
+          email: email,
+          password: password
+        }
+      }
+    )
+
+    # Save the JSON web token from the response
+    jwt = response.body["jwt"]
+    # Include the jwt in the headers of any future web requests
+    Unirest.default_header("Authorization", "Bearer #{jwt}")
+    puts "You are now logged in and your jwt is #{jwt}"
+    print "[Enter] to continue: "
+    gets.chomp
+  elsif input == "Logout" or input == "logout"
+    jwt = ""
+    Unirest.clear_default_headers()
+    print "You are now logged out. [Enter] to continue: "
+    gets.chomp
+  elsif input == "in?" or input == "In?" or input == "in"
+    body = Unirest.get("http://localhost:3000/v2/contacts").body
+    if body[0]
+      id = body[0]["user_id"].to_i
+    else
+      id = body["user_id"].to_i
+    end
+    body = Unirest.get("http://localhost:3000/v2/users/#{id}").body
+    if body["email"]
+      puts "You are currently logged in under the username: #{body["email"]}"
+    else
+      puts "You are not currently logged in"
+    end
+    print "Enter to continue: "
+    gets.chomp
+  elsif input == "1" # View First Contact
     response = Unirest.get("http://localhost:3000/v1/first_contact")
     first_name = response.body
     puts JSON.pretty_generate(first_name)
     print "[Enter] To Continue."
     gets.chomp
-    system "clear"
   elsif input == "2" # View All Contacts (all info)
     response = Unirest.get("http://localhost:3000/v1/all_contacts")
     all_contacts = response.body
     puts JSON.pretty_generate(all_contacts)
     print "[Enter] To Continue."
     gets.chomp
-    system "clear"
   elsif input == "3" # View All Contacts (limited info)
     all_contacts = Unirest.get("http://localhost:3000/v2/contacts").body
     puts JSON.pretty_generate(all_contacts)
     print "[Enter] To Continue."
     gets.chomp
-    system "clear"
   elsif input == "4" # View specific contact
     print "Enter id: "
     id = gets.chomp
@@ -54,8 +115,20 @@ while true
     puts JSON.pretty_generate(body)
     print "[Enter] To Continue."
     gets.chomp
-    system "clear"
-  elsif input == "5" # Update Contact
+  elsif input == "5" # Search Contacts
+    while true
+      print "Enter Search Term: "
+      search = gets.chomp
+      response = Unirest.get("http://localhost:3000/v2/contacts?search=#{search}")
+      page = response.body
+      puts JSON.pretty_generate(page)
+      puts
+      print "[Enter] to search again, [1] to return to main menu: "
+      if gets.chomp == "1"
+        break
+      end
+    end
+  elsif input == "6" # Update Contact
     print "Enter id: "
     id = gets.chomp
     body = Unirest.get("http://localhost:3000/v2/contacts/#{id}").body
@@ -74,11 +147,19 @@ while true
     params["phone_number"] = gets.chomp
     params.delete_if { |_key, value| value.empty? }
     body = Unirest.patch("http://localhost:3000/v2/contacts/#{id}", parameters: params).body
-    puts JSON.pretty_generate(body)
+    if body["errors"] != nil
+      puts
+      puts "*****"
+      puts "There was an error"
+      puts "*****"
+      puts body["errors"]
+    else
+      puts JSON.pretty_generate(body)
+    end
+    puts
     print "[Enter] To Continue."
     gets.chomp
-    system "clear"
-  elsif input == "6" # Create contact
+  elsif input == "7" # Create contact
     params = {}
     print "First Name: "
     params["first_name"] = gets.chomp
@@ -93,12 +174,23 @@ while true
     print "Phone Number: "
     params["phone_number"] = gets.chomp
     body = Unirest.post("http://localhost:3000/v2/contacts/", parameters: params).body
-    puts JSON.pretty_generate(body)
-    puts "Contact Successfully Created!"
+    if body["errors"] != nil
+      puts
+      puts "*****"
+      puts "There was an error"
+      puts "*****"
+      puts body["errors"]
+    else
+      puts "*****"
+      puts "Contact Successfully Created!"
+      puts "*****"
+      puts
+      puts JSON.pretty_generate(body)
+    end
+    puts
     print "[Enter] To Continue."
     gets.chomp
-    system "clear"
-  elsif input == "7" # Delete contact
+  elsif input == "8" # Delete contact
     print "Enter id: "
     id = gets.chomp
     puts
@@ -124,7 +216,6 @@ while true
     end
     print "[Enter] To Continue."
     gets.chomp
-    system "clear"
   elsif input == "q"
     break
   end
